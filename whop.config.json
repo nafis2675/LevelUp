@@ -1,0 +1,50 @@
+{
+  "name": "LevelUp",
+  "identifier": "levelup",
+  "version": "1.0.0",
+  "description": "Smart gamification suite with XP, levels, badges, and leaderboards for your Whop community",
+  "icon": "https://your-domain.com/icon.png",
+  "category": "Engagement",
+  "permissions": [
+    "read:company",
+    "read:memberships",
+    "read:users",
+    "write:notifications"
+  ],
+  "webhooks": [
+    "message.created",
+    "payment.succeeded",
+    "course.section_completed",
+    "membership.created",
+    "membership.deleted"
+  ],
+  "oauth": {
+    "scopes": [
+      "company:read",
+      "memberships:read",
+      "users:read",
+      "notifications:write"
+    ]
+  },
+  "pricing": {
+    "free": {
+      "name": "Free",
+      "price": 0,
+      "limits": {
+        "members": 50,
+        "badges": 5,
+        "rules": 3
+      }
+    },
+    "pro": {
+      "name": "Pro",
+      "price": 29,
+      "interval": "month"
+    },
+    "premium": {
+      "name": "Premium",
+      "price": 59,
+      "interval": "month"
+    }
+  }
+}

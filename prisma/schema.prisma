@@ -1,0 +1,192 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Core Models
+
+model Company {
+  id              String   @id // Whop company ID
+  name            String
+  ownerId         String   // Whop user ID
+  settings        Json     @default("{}")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  members         Member[]
+  badges          Badge[]
+  rules           XPRule[]
+  rewards         Reward[]
+  leaderboards    Leaderboard[]
+
+  @@index([ownerId])
+}
+
+model Member {
+  id              String   @id @default(cuid())
+  whopUserId      String   // Whop user ID
+  whopMembershipId String  // Whop membership ID
+  companyId       String
+
+  displayName     String
+  avatarUrl       String?
+
+  totalXP         Int      @default(0)
+  level           Int      @default(1)
+  currentLevelXP  Int      @default(0) // XP within current level
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  lastActivityAt  DateTime @default(now())
+
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  xpTransactions  XPTransaction[]
+  memberBadges    MemberBadge[]
+  rewardsClaimed  RewardClaim[]
+
+  @@unique([whopUserId, companyId])
+  @@index([companyId, totalXP]) // For leaderboard queries
+  @@index([whopMembershipId])
+}
+
+model XPRule {
+  id          String   @id @default(cuid())
+  companyId   String
+
+  name        String   // "Message sent", "Course completed", etc.
+  eventType   String   // "message.created", "purchase.completed"
+  xpAmount    Int      // XP to award
+  cooldown    Int      @default(0) // Seconds before same event counts again
+  maxPerDay   Int      @default(0) // 0 = unlimited
+
+  isActive    Boolean  @default(true)
+  conditions  Json?    // Advanced filters (channel, product, etc.)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, eventType])
+}
+
+model XPTransaction {
+  id          String   @id @default(cuid())
+  memberId    String
+
+  amount      Int
+  reason      String   // "Message sent in #general"
+  eventType   String   // References XPRule.eventType
+  metadata    Json?    // Original webhook data
+
+  createdAt   DateTime @default(now())
+
+  member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId, createdAt])
+}
+
+model Badge {
+  id          String   @id @default(cuid())
+  companyId   String
+
+  name        String
+  description String
+  imageUrl    String   // Cloudinary URL or emoji
+  rarity      String   @default("common") // common, rare, epic, legendary
+
+  // Achievement conditions
+  requirement Json     // { type: "xp_total", value: 1000 } or { type: "custom", rules: [...] }
+
+  isActive    Boolean  @default(true)
+  isSecret    Boolean  @default(false) // Don't show until earned
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  memberBadges MemberBadge[]
+
+  @@index([companyId])
+}
+
+model MemberBadge {
+  id          String   @id @default(cuid())
+  memberId    String
+  badgeId     String
+
+  earnedAt    DateTime @default(now())
+  progress    Int      @default(100) // For progressive badges (0-100)
+
+  member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  badge       Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, badgeId])
+  @@index([memberId])
+}
+
+model Reward {
+  id          String   @id @default(cuid())
+  companyId   String
+
+  name        String
+  description String
+  type        String   // "role", "free_days", "discount_code", "custom"
+  config      Json     // { roleId: "...", days: 7, code: "LEVEL10" }
+
+  requiredLevel Int?
+  requiredXP    Int?
+  requiredBadges Json? // Array of badge IDs
+
+  isActive    Boolean  @default(true)
+  isRepeatable Boolean @default(false)
+  cooldownDays Int     @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  claims      RewardClaim[]
+
+  @@index([companyId])
+}
+
+model RewardClaim {
+  id          String   @id @default(cuid())
+  memberId    String
+  rewardId    String
+
+  claimedAt   DateTime @default(now())
+  status      String   @default("pending") // pending, completed, failed
+
+  member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  reward      Reward   @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@index([rewardId])
+}
+
+model Leaderboard {
+  id          String   @id @default(cuid())
+  companyId   String
+
+  name        String   // "All-Time", "This Week", "Top Level Gainers"
+  type        String   // "total_xp", "weekly_xp", "level", "badges_earned"
+  timeframe   String   @default("all_time") // all_time, weekly, monthly
+
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+}
