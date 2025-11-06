@@ -5,6 +5,9 @@ import { calculateLevel } from './xp';
 import { checkBadgeAchievements } from './badge-engine';
 import { sendLevelUpNotification, sendBadgeNotification } from './notifications';
 import { cacheDelPattern } from './redis';
+import { GrantXPSchema } from './validation';
+import { xpLogger, timed } from './logger';
+import { z } from 'zod';
 import type { Member, Badge } from '@prisma/client';
 
 export interface GrantXPParams {
@@ -21,83 +24,138 @@ export interface GrantXPResult {
   leveledUp: boolean;
   badgesEarned?: Badge[];
   member?: Member;
+  error?: string; // Add error field for better error reporting
 }
 
 /**
  * Grant XP to a member and handle level ups and badge achievements
+ * FIXED: Uses atomic increment to prevent race conditions
  */
 export async function grantXP(params: GrantXPParams): Promise<GrantXPResult> {
-  try {
-    const member = await prisma.member.findUnique({
-      where: { id: params.memberId }
-    });
+  return await timed(
+    async () => {
+      try {
+        // Validate inputs with Zod
+        const validated = GrantXPSchema.parse(params);
 
-    if (!member) {
-      throw new Error('Member not found');
-    }
+        xpLogger.info({
+          memberId: validated.memberId,
+          amount: validated.amount,
+          eventType: validated.eventType
+        }, 'Starting XP grant');
 
-    const oldLevel = member.level;
-    const newTotalXP = member.totalXP + params.amount;
-    const levelData = calculateLevel(newTotalXP);
+        const member = await prisma.member.findUnique({
+          where: { id: validated.memberId }
+        });
 
-    // Update member in a transaction
-    const updated = await prisma.$transaction(async (tx) => {
-      // Update member stats
-      const updatedMember = await tx.member.update({
-        where: { id: params.memberId },
-        data: {
-          totalXP: newTotalXP,
-          level: levelData.level,
-          currentLevelXP: levelData.currentLevelXP,
-          lastActivityAt: new Date()
+        if (!member) {
+          throw new Error('Member not found');
         }
-      });
 
-      // Create transaction record
-      await tx.xPTransaction.create({
-        data: {
+        const oldLevel = member.level;
+
+        // Update member in a transaction with atomic operations
+        const updated = await prisma.$transaction(async (tx) => {
+          // Step 1: Atomic increment of XP (FIXES RACE CONDITION)
+          const updatedMember = await tx.member.update({
+            where: { id: validated.memberId },
+            data: {
+              totalXP: { increment: validated.amount }, // ← ATOMIC INCREMENT
+              lastActivityAt: new Date()
+            }
+          });
+
+          // Step 2: Calculate level from updated total
+          const levelData = calculateLevel(updatedMember.totalXP);
+
+          // Step 3: Update level if changed
+          const finalMember = await tx.member.update({
+            where: { id: validated.memberId },
+            data: {
+              level: levelData.level,
+              currentLevelXP: levelData.currentLevelXP
+            }
+          });
+
+          // Step 4: Create transaction record
+          await tx.xPTransaction.create({
+            data: {
+              memberId: validated.memberId,
+              amount: validated.amount,
+              reason: validated.reason,
+              eventType: validated.eventType,
+              metadata: validated.metadata || {}
+            }
+          });
+
+          return finalMember;
+        });
+
+        const leveledUp = updated.level > oldLevel;
+
+        // Check for new badges (outside transaction for performance)
+        const newBadges = await checkBadgeAchievements(member.id, updated);
+
+        // Invalidate leaderboard caches
+        await cacheDelPattern(`leaderboard:${member.companyId}:*`);
+
+        // Send notifications if leveled up or earned badges
+        if (leveledUp) {
+          await sendLevelUpNotification(updated, updated.level);
+        }
+
+        if (newBadges.length > 0) {
+          await sendBadgeNotification(updated, newBadges);
+        }
+
+        xpLogger.info({
+          memberId: validated.memberId,
+          amount: validated.amount,
+          newLevel: updated.level,
+          leveledUp,
+          badgesEarned: newBadges.length
+        }, 'XP granted successfully');
+
+        return {
+          success: true,
+          newLevel: updated.level,
+          leveledUp,
+          badgesEarned: newBadges,
+          member: updated
+        };
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          xpLogger.error({
+            error: error.errors
+          }, 'Validation error in XP grant');
+          return {
+            success: false,
+            leveledUp: false,
+            error: `Validation failed: ${error.errors.map(e => e.message).join(', ')}`
+          };
+        }
+
+        xpLogger.error({
           memberId: params.memberId,
           amount: params.amount,
-          reason: params.reason,
-          eventType: params.eventType,
-          metadata: params.metadata || {}
+          error: error instanceof Error ? error.message : String(error)
+        }, 'Failed to grant XP');
+
+        // Send to error tracking
+        if (process.env.SENTRY_DSN) {
+          // Sentry.captureException(error);
         }
-      });
 
-      return updatedMember;
-    });
-
-    const leveledUp = levelData.level > oldLevel;
-
-    // Check for new badges
-    const newBadges = await checkBadgeAchievements(member.id, updated);
-
-    // Invalidate leaderboard caches
-    await cacheDelPattern(`leaderboard:${member.companyId}:*`);
-
-    // Send notifications if leveled up or earned badges
-    if (leveledUp) {
-      await sendLevelUpNotification(updated, levelData.level);
-    }
-
-    if (newBadges.length > 0) {
-      await sendBadgeNotification(updated, newBadges);
-    }
-
-    return {
-      success: true,
-      newLevel: levelData.level,
-      leveledUp,
-      badgesEarned: newBadges,
-      member: updated
-    };
-  } catch (error) {
-    console.error('Error granting XP:', error);
-    return {
-      success: false,
-      leveledUp: false
-    };
-  }
+        return {
+          success: false,
+          leveledUp: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        };
+      }
+    },
+    xpLogger,
+    'grantXP'
+  );
 }
 
 /**
