@@ -85,10 +85,11 @@ export async function sendNotification(params: {
 
 /**
  * Verify webhook signature from Whop
+ * FIXED: Uses timing-safe comparison and proper error handling
  * Note: Whop uses x-whop-signature header for webhook verification
  */
 export function verifyWebhookSignature(
-  payload: string,
+  body: string,
   signature: string | null
 ): boolean {
   if (!signature) {
@@ -96,24 +97,29 @@ export function verifyWebhookSignature(
     return false;
   }
 
+  const secret = process.env.WHOP_WEBHOOK_SECRET || process.env.WHOP_API_KEY;
+  if (!secret) {
+    console.error('WHOP_WEBHOOK_SECRET or WHOP_API_KEY is not set');
+    return false;
+  }
+
+  // For development, you may want to disable this check
+  if (process.env.NODE_ENV === 'development' && process.env.SKIP_WEBHOOK_VERIFICATION === 'true') {
+    console.log('Development mode: Skipping webhook signature verification');
+    return true;
+  }
+
   try {
-    // Whop webhook signature verification
-    // The signature is typically in the x-whop-signature header
-    // For development, you may want to disable this check
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Development mode: Skipping webhook signature verification');
-      return true;
-    }
+    // Calculate expected signature
+    const expectedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(body, 'utf8')
+      .digest('hex');
 
-    // In production, implement proper signature verification
-    // according to Whop's webhook documentation
-    const secret = process.env.WHOP_API_KEY!;
-    const hmac = crypto.createHmac('sha256', secret);
-    const digest = hmac.update(payload).digest('hex');
-
+    // Use timing-safe comparison to prevent timing attacks
     return crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(digest)
+      Buffer.from(signature, 'hex'),
+      Buffer.from(expectedSignature, 'hex')
     );
   } catch (error) {
     console.error('Error verifying webhook signature:', error);

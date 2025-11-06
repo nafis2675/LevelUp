@@ -1,89 +1,176 @@
 // lib/badge-engine.ts - Badge Achievement System
 
 import { prisma } from './prisma';
+import { badgeLogger, timed } from './logger';
+import { Prisma } from '@prisma/client';
 import type { Member, Badge } from '@prisma/client';
+
+// Type for badge requirements
+type BadgeRequirement =
+  | { type: 'xp_total'; value: number }
+  | { type: 'level'; value: number }
+  | { type: 'streak'; days: number }
+  | { type: 'badge_count'; value: number }
+  | { type: 'message_count'; value: number }
+  | { type: 'purchase_count'; value: number }
+  | { type: 'custom'; rules: any[] };
 
 /**
  * Check if member has earned any new badges
+ * IMPROVED: Better error handling and logging
  */
 export async function checkBadgeAchievements(
   memberId: string,
   member: Member
 ): Promise<Badge[]> {
-  try {
-    // Get all active badges for this company
-    const badges = await prisma.badge.findMany({
-      where: {
-        companyId: member.companyId,
-        isActive: true
-      }
-    });
+  return await timed(
+    async () => {
+      try {
+        badgeLogger.info({
+          memberId,
+          companyId: member.companyId
+        }, 'Checking badge achievements');
 
-    // Get badges member already has
-    const existingBadges = await prisma.memberBadge.findMany({
-      where: { memberId },
-      select: { badgeId: true }
-    });
-
-    const existingBadgeIds = new Set(existingBadges.map(b => b.badgeId));
-    const newlyEarned: Badge[] = [];
-
-    for (const badge of badges) {
-      if (existingBadgeIds.has(badge.id)) continue;
-
-      const requirement = badge.requirement as any;
-      let earned = false;
-
-      switch (requirement.type) {
-        case 'xp_total':
-          earned = member.totalXP >= requirement.value;
-          break;
-
-        case 'level':
-          earned = member.level >= requirement.value;
-          break;
-
-        case 'streak':
-          earned = await checkStreak(memberId, requirement.days);
-          break;
-
-        case 'badge_count':
-          earned = existingBadges.length >= requirement.value;
-          break;
-
-        case 'message_count':
-          earned = await checkMessageCount(memberId, requirement.value);
-          break;
-
-        case 'purchase_count':
-          earned = await checkPurchaseCount(memberId, requirement.value);
-          break;
-
-        case 'custom':
-          earned = await evaluateCustomRule(memberId, requirement.rules);
-          break;
-
-        default:
-          console.warn(`Unknown badge requirement type: ${requirement.type}`);
-      }
-
-      if (earned) {
-        await prisma.memberBadge.create({
-          data: {
-            memberId,
-            badgeId: badge.id,
-            earnedAt: new Date()
+        // Get all active badges for this company
+        const badges = await prisma.badge.findMany({
+          where: {
+            companyId: member.companyId,
+            isActive: true
           }
         });
-        newlyEarned.push(badge);
-      }
-    }
 
-    return newlyEarned;
-  } catch (error) {
-    console.error('Error checking badge achievements:', error);
-    return [];
-  }
+        // Get badges member already has
+        const existingBadges = await prisma.memberBadge.findMany({
+          where: { memberId },
+          select: { badgeId: true }
+        });
+
+        const existingBadgeIds = new Set(existingBadges.map(b => b.badgeId));
+        const newlyEarned: Badge[] = [];
+
+        for (const badge of badges) {
+          if (existingBadgeIds.has(badge.id)) continue;
+
+          try {
+            const requirement = badge.requirement as BadgeRequirement;
+            let earned = false;
+
+            switch (requirement.type) {
+              case 'xp_total':
+                earned = member.totalXP >= requirement.value;
+                break;
+
+              case 'level':
+                earned = member.level >= requirement.value;
+                break;
+
+              case 'streak':
+                earned = await checkStreak(memberId, requirement.days);
+                break;
+
+              case 'badge_count':
+                earned = existingBadges.length >= requirement.value;
+                break;
+
+              case 'message_count':
+                earned = await checkMessageCount(memberId, requirement.value);
+                break;
+
+              case 'purchase_count':
+                earned = await checkPurchaseCount(memberId, requirement.value);
+                break;
+
+              case 'custom':
+                earned = await evaluateCustomRule(memberId, requirement.rules);
+                break;
+
+              default:
+                badgeLogger.warn({
+                  badgeId: badge.id,
+                  requirementType: (requirement as any).type
+                }, 'Unknown badge requirement type');
+            }
+
+            if (earned) {
+              // Use upsert to avoid duplicate key errors
+              await prisma.memberBadge.upsert({
+                where: {
+                  memberId_badgeId: {
+                    memberId,
+                    badgeId: badge.id
+                  }
+                },
+                create: {
+                  memberId,
+                  badgeId: badge.id,
+                  earnedAt: new Date()
+                },
+                update: {
+                  earnedAt: new Date()
+                }
+              });
+
+              newlyEarned.push(badge);
+
+              badgeLogger.info({
+                memberId,
+                badgeId: badge.id,
+                badgeName: badge.name
+              }, 'Badge earned');
+            }
+          } catch (badgeError) {
+            // Log individual badge errors but continue processing others
+            badgeLogger.error({
+              badgeId: badge.id,
+              badgeName: badge.name,
+              memberId,
+              error: badgeError instanceof Error ? badgeError.message : String(badgeError)
+            }, 'Error checking individual badge');
+
+            // Send to error tracking
+            if (process.env.SENTRY_DSN) {
+              // Sentry.captureException(badgeError, {
+              //   tags: { badgeId: badge.id, memberId }
+              // });
+            }
+
+            // Continue to next badge
+            continue;
+          }
+        }
+
+        badgeLogger.info({
+          memberId,
+          newBadgesCount: newlyEarned.length
+        }, 'Badge check completed');
+
+        return newlyEarned;
+      } catch (error) {
+        badgeLogger.error({
+          memberId,
+          companyId: member.companyId,
+          error: error instanceof Error ? error.message : String(error)
+        }, 'Critical error in checkBadgeAchievements');
+
+        // Send to error tracking
+        if (process.env.SENTRY_DSN) {
+          // Sentry.captureException(error, {
+          //   tags: { memberId, companyId: member.companyId }
+          // });
+        }
+
+        // For database errors, re-throw to alert caller
+        if (error instanceof Prisma.PrismaClientKnownRequestError) {
+          throw new Error(`Database error checking badges: ${error.message}`);
+        }
+
+        // For other errors, return empty array but log
+        return [];
+      }
+    },
+    badgeLogger,
+    'checkBadgeAchievements'
+  );
 }
 
 /**

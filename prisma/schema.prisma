@@ -90,6 +90,7 @@ model XPTransaction {
   member      Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@index([memberId, createdAt])
+  @@index([createdAt]) // ADDED: For time-based queries (weekly leaderboards)
 }
 
 model Badge {
@@ -129,6 +130,7 @@ model MemberBadge {
 
   @@unique([memberId, badgeId])
   @@index([memberId])
+  @@index([badgeId]) // ADDED: For badge count queries
 }
 
 model Reward {
