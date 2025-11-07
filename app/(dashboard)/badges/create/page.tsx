@@ -17,12 +17,63 @@ export default function CreateBadgePage() {
     requirementValue: 1000,
     isSecret: false
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In production, this would call your API
-    console.log('Creating badge:', formData);
-    // router.push('/badges');
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      // Get companyId from environment or context
+      // For now, using a placeholder - in production this should come from auth/context
+      const companyId = process.env.NEXT_PUBLIC_WHOP_COMPANY_ID || 'demo-company';
+
+      // Build requirement object based on form data
+      const requirement: any = {
+        type: formData.requirementType,
+      };
+
+      // Add the appropriate field based on requirement type
+      if (formData.requirementType === 'streak') {
+        requirement.days = formData.requirementValue;
+      } else {
+        requirement.value = formData.requirementValue;
+      }
+
+      const response = await fetch('/api/badges', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          companyId,
+          name: formData.name,
+          description: formData.description,
+          imageUrl: formData.imageUrl,
+          rarity: formData.rarity,
+          requirement,
+          isSecret: formData.isSecret,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create badge');
+      }
+
+      const badge = await response.json();
+      console.log('Badge created successfully:', badge);
+
+      // Redirect to badges page
+      router.push('/badges');
+    } catch (err) {
+      console.error('Error creating badge:', err);
+      setError(err instanceof Error ? err.message : 'Failed to create badge');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -35,6 +86,12 @@ export default function CreateBadgePage() {
       </div>
 
       <div className="bg-white shadow rounded-lg p-6 max-w-2xl">
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -144,9 +201,10 @@ export default function CreateBadgePage() {
           <div className="flex gap-4 pt-4">
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium"
+              disabled={isSubmitting}
+              className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Create Badge
+              {isSubmitting ? 'Creating...' : 'Create Badge'}
             </button>
             <Link
               href="/badges"

@@ -16,12 +16,51 @@ export default function CreateRulePage() {
     maxPerDay: 0,
     isActive: true
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In production, this would call your API
-    console.log('Creating rule:', formData);
-    // router.push('/rules');
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      // Get companyId from environment or context
+      // For now, using a placeholder - in production this should come from auth/context
+      const companyId = process.env.NEXT_PUBLIC_WHOP_COMPANY_ID || 'demo-company';
+
+      const response = await fetch('/api/rules', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          companyId,
+          name: formData.name,
+          eventType: formData.eventType,
+          xpAmount: formData.xpAmount,
+          cooldown: formData.cooldown,
+          maxPerDay: formData.maxPerDay,
+          conditions: null,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create XP rule');
+      }
+
+      const rule = await response.json();
+      console.log('XP rule created successfully:', rule);
+
+      // Redirect to rules page
+      router.push('/rules');
+    } catch (err) {
+      console.error('Error creating XP rule:', err);
+      setError(err instanceof Error ? err.message : 'Failed to create XP rule');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -34,6 +73,12 @@ export default function CreateRulePage() {
       </div>
 
       <div className="bg-white shadow rounded-lg p-6 max-w-2xl">
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -138,9 +183,10 @@ export default function CreateRulePage() {
           <div className="flex gap-4 pt-4">
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium"
+              disabled={isSubmitting}
+              className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Create Rule
+              {isSubmitting ? 'Creating...' : 'Create Rule'}
             </button>
             <Link
               href="/rules"
