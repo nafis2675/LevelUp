@@ -8,7 +8,10 @@ import { cacheDelPattern } from './redis';
 import { GrantXPSchema } from './validation';
 import { xpLogger, timed } from './logger';
 import { z } from 'zod';
-import type { Member, Badge } from '@prisma/client';
+
+// Infer types from Prisma query results
+type Member = NonNullable<Awaited<ReturnType<typeof prisma.member.findUnique>>>;
+type Badge = NonNullable<Awaited<ReturnType<typeof prisma.badge.findUnique>>>;
 
 export interface GrantXPParams {
   memberId: string;
@@ -55,7 +58,7 @@ export async function grantXP(params: GrantXPParams): Promise<GrantXPResult> {
         const oldLevel = member.level;
 
         // Update member in a transaction with atomic operations
-        const updated = await prisma.$transaction(async (tx) => {
+        const updated = await prisma.$transaction(async (tx: any) => {
           // Step 1: Atomic increment of XP (FIXES RACE CONDITION)
           const updatedMember = await tx.member.update({
             where: { id: validated.memberId },
@@ -125,13 +128,14 @@ export async function grantXP(params: GrantXPParams): Promise<GrantXPResult> {
         };
       } catch (error) {
         if (error instanceof z.ZodError) {
+          const zodError = error as any;
           xpLogger.error({
-            error: error.errors
+            error: zodError.errors
           }, 'Validation error in XP grant');
           return {
             success: false,
             leveledUp: false,
-            error: `Validation failed: ${error.errors.map(e => e.message).join(', ')}`
+            error: `Validation failed: ${zodError.errors.map((e: any) => e.message).join(', ')}`
           };
         }
 
