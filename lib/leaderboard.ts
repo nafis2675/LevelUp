@@ -115,7 +115,10 @@ async function getTopByTotalXP(
     }
   });
 
-  return members;
+  return members.map((member: typeof members[number]): LeaderboardEntry => ({
+    ...member,
+    avatarUrl: member.avatarUrl ?? undefined
+  }));
 }
 
 /**
@@ -138,7 +141,10 @@ async function getTopByLevel(
     }
   });
 
-  return members;
+  return members.map((member: typeof members[number]): LeaderboardEntry => ({
+    ...member,
+    avatarUrl: member.avatarUrl ?? undefined
+  }));
 }
 
 /**
@@ -152,7 +158,14 @@ async function getTopByWeeklyXP(
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   // Use optimized query that only fetches top N members
-  const results = await prisma.$queryRaw<LeaderboardEntry[]>`
+  const results = await prisma.$queryRaw<Array<{
+    id: string;
+    displayName: string;
+    avatarUrl: string | null;
+    totalXP: number;
+    level: number;
+    weeklyXP: number;
+  }>>`
     SELECT
       m.id,
       m."displayName" as "displayName",
@@ -170,7 +183,10 @@ async function getTopByWeeklyXP(
     LIMIT ${limit}
   `;
 
-  return results;
+  return results.map((result: typeof results[number]): LeaderboardEntry => ({
+    ...result,
+    avatarUrl: result.avatarUrl ?? undefined
+  }));
 }
 
 /**
@@ -181,7 +197,14 @@ async function getTopByBadges(
   companyId: string,
   limit: number
 ): Promise<LeaderboardEntry[]> {
-  const results = await prisma.$queryRaw<LeaderboardEntry[]>`
+  const results = await prisma.$queryRaw<Array<{
+    id: string;
+    displayName: string;
+    avatarUrl: string | null;
+    totalXP: number;
+    level: number;
+    badgeCount: number;
+  }>>`
     SELECT
       m.id,
       m."displayName" as "displayName",
@@ -197,7 +220,10 @@ async function getTopByBadges(
     LIMIT ${limit}
   `;
 
-  return results;
+  return results.map((result: typeof results[number]): LeaderboardEntry => ({
+    ...result,
+    avatarUrl: result.avatarUrl ?? undefined
+  }));
 }
 
 /**
