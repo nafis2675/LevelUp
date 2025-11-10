@@ -53,6 +53,18 @@ export async function POST(req: Request) {
       );
     }
 
+    // Validate that the company exists
+    const company = await prisma.company.findUnique({
+      where: { id: companyId }
+    });
+
+    if (!company) {
+      return NextResponse.json(
+        { error: `Company with id '${companyId}' does not exist` },
+        { status: 404 }
+      );
+    }
+
     const reward = await prisma.reward.create({
       data: {
         companyId,
