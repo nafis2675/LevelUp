@@ -1,24 +1,42 @@
-// lib/redis.ts - Redis Client for Caching
+// lib/redis.ts - Redis Client for Caching with graceful fallback
 
 import { createClient } from 'redis';
 
 const globalForRedis = globalThis as unknown as {
   redis: ReturnType<typeof createClient> | undefined;
+  redisConnected: boolean;
 };
 
-export const redis =
-  globalForRedis.redis ??
-  createClient({
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
+// Only create Redis client if REDIS_URL is provided
+let redis: ReturnType<typeof createClient> | null = null;
+let isRedisAvailable = false;
+
+if (process.env.REDIS_URL) {
+  redis = globalForRedis.redis ?? createClient({
+    url: process.env.REDIS_URL,
   });
 
-if (!redis.isOpen) {
-  redis.connect().catch(console.error);
+  // Try to connect, but don't crash if it fails
+  if (redis && !redis.isOpen) {
+    redis.connect()
+      .then(() => {
+        isRedisAvailable = true;
+        console.log('✅ Redis connected successfully');
+      })
+      .catch((error) => {
+        console.warn('⚠️ Redis connection failed, running without cache:', error.message);
+        isRedisAvailable = false;
+      });
+  }
+
+  if (process.env.NODE_ENV !== 'production') globalForRedis.redis = redis;
+} else {
+  console.warn('⚠️ REDIS_URL not set, running without cache');
 }
 
-if (process.env.NODE_ENV !== 'production') globalForRedis.redis = redis;
-
 export async function cacheGet<T>(key: string): Promise<T | null> {
+  if (!redis || !isRedisAvailable) return null;
+  
   try {
     const value = await redis.get(key);
     return value ? JSON.parse(value) : null;
@@ -29,6 +47,8 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
 }
 
 export async function cacheSet(key: string, value: any, ttlSeconds: number = 300): Promise<void> {
+  if (!redis || !isRedisAvailable) return;
+  
   try {
     await redis.setEx(key, ttlSeconds, JSON.stringify(value));
   } catch (error) {
@@ -37,6 +57,8 @@ export async function cacheSet(key: string, value: any, ttlSeconds: number = 300
 }
 
 export async function cacheDel(key: string): Promise<void> {
+  if (!redis || !isRedisAvailable) return;
+  
   try {
     await redis.del(key);
   } catch (error) {
@@ -45,6 +67,8 @@ export async function cacheDel(key: string): Promise<void> {
 }
 
 export async function cacheDelPattern(pattern: string): Promise<void> {
+  if (!redis || !isRedisAvailable) return;
+  
   try {
     const keys = await redis.keys(pattern);
     if (keys.length > 0) {
