@@ -37,8 +37,18 @@ export async function GET(req: Request) {
     });
   } catch (error) {
     console.error('Error fetching leaderboard:', error);
+
+    // Provide more detailed error message
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch leaderboard';
+    const isDbError = errorMessage.includes('relation') || errorMessage.includes('table') || errorMessage.includes('does not exist');
+
     return NextResponse.json(
-      { error: 'Failed to fetch leaderboard' },
+      {
+        error: isDbError
+          ? 'Database not initialized. Please run "prisma db push" to set up the database schema.'
+          : errorMessage,
+        details: errorMessage
+      },
       { status: 500 }
     );
   }
