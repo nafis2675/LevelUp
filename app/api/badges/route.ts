@@ -42,6 +42,11 @@ export async function GET(req: Request) {
   }
 }
 
+/**
+ * Create a new badge for the specified company.
+ *
+ * @returns `NextResponse` containing the created badge object on success; otherwise a JSON error message with status `400` (missing required fields), `404` (company not found), or `500` (failed to create badge).
+ */
 export async function POST(req: Request) {
   try {
     const body = await req.json();

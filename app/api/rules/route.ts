@@ -30,6 +30,13 @@ export async function GET(req: Request) {
   }
 }
 
+/**
+ * Create a new XP rule for a company.
+ *
+ * Validates required fields, ensures `xpAmount` is greater than zero, and verifies the specified company exists before creating and returning the new XP rule.
+ *
+ * @returns The created XP rule object on success. On failure returns a JSON error object with an appropriate HTTP status (400 for validation errors, 404 if company not found, 500 on server error).
+ */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
