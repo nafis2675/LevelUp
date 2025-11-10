@@ -30,6 +30,13 @@ export async function GET(req: Request) {
   }
 }
 
+/**
+ * Creates a new reward for a company.
+ *
+ * Validates required fields and that the referenced company exists, then inserts the reward.
+ *
+ * @returns The created reward object on success; on failure returns a JSON error object with an `error` message and an HTTP status of 400 (missing fields), 404 (company not found), or 500 (server error).
+ */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
