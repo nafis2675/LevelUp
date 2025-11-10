@@ -78,7 +78,7 @@ export default function LeaderboardPage() {
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Leaderboard</h1>
         <p className="mt-2 text-sm text-gray-600">
-          See who's leading the community
+          See who&apos;s leading the community
         </p>
       </div>
 

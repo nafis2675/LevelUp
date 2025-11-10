@@ -82,7 +82,7 @@ export default async function Dashboard() {
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
         <p className="mt-2 text-sm text-gray-600">
-          Overview of your community's gamification stats
+          Overview of your community&apos;s gamification stats
         </p>
       </div>
 
@@ -124,11 +124,11 @@ export default async function Dashboard() {
           </div>
           <div className="flex items-center gap-3 text-sm">
             <span className="text-gray-500">12 min ago</span>
-            <span className="text-gray-900">User 2 earned badge "Chatter"</span>
+            <span className="text-gray-900">User 2 earned badge &quot;Chatter&quot;</span>
           </div>
           <div className="flex items-center gap-3 text-sm">
             <span className="text-gray-500">1 hour ago</span>
-            <span className="text-gray-900">User 3 claimed reward "Pro Member"</span>
+            <span className="text-gray-900">User 3 claimed reward &quot;Pro Member&quot;</span>
           </div>
         </div>
       </div>
