@@ -3,7 +3,10 @@
 import { prisma } from './prisma';
 import { badgeLogger, timed } from './logger';
 import { Prisma } from '@prisma/client';
-import type { Member, Badge } from '@prisma/client';
+
+// Infer types from Prisma query results
+type Member = NonNullable<Awaited<ReturnType<typeof prisma.member.findUnique>>>;
+type Badge = NonNullable<Awaited<ReturnType<typeof prisma.badge.findUnique>>>;
 
 // Type for badge requirements
 type BadgeRequirement =
@@ -45,7 +48,7 @@ export async function checkBadgeAchievements(
           select: { badgeId: true }
         });
 
-        const existingBadgeIds = new Set(existingBadges.map(b => b.badgeId));
+        const existingBadgeIds = new Set(existingBadges.map((b: any) => b.badgeId));
         const newlyEarned: Badge[] = [];
 
         for (const badge of badges) {
@@ -160,8 +163,8 @@ export async function checkBadgeAchievements(
         }
 
         // For database errors, re-throw to alert caller
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-          throw new Error(`Database error checking badges: ${error.message}`);
+        if (error && typeof error === 'object' && 'code' in error) {
+          throw new Error(`Database error checking badges: ${error instanceof Error ? error.message : String(error)}`);
         }
 
         // For other errors, return empty array but log
@@ -275,7 +278,7 @@ async function evaluateCustomRule(memberId: string, rules: any[]): Promise<boole
           }
         });
 
-        const totalXP = transactions.reduce((sum, t) => sum + t.amount, 0);
+        const totalXP = transactions.reduce((sum: number, t: any) => sum + t.amount, 0);
         if (totalXP < rule.value) return false;
       }
     }

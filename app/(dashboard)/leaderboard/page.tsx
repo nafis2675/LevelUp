@@ -161,13 +161,13 @@ export default function LeaderboardPage() {
         {/* Leaderboard List */}
         {!isLoading && !error && leaderboard.length > 0 && (
           <div className="space-y-2">
-            {leaderboard.map((entry) => (
+            {leaderboard.map((entry, index) => (
             <div
               key={entry.id}
-              className={`flex items-center gap-4 p-4 rounded-lg border-2 transition hover:shadow-md ${getRankColor(entry.rank)}`}
+              className={`flex items-center gap-4 p-4 rounded-lg border-2 transition hover:shadow-md ${getRankColor(entry.rank ?? index + 1)}`}
             >
               <div className="flex items-center justify-center w-12 h-12 text-2xl font-bold">
-                {getRankEmoji(entry.rank) || entry.rank}
+                {getRankEmoji(entry.rank ?? index + 1) || (entry.rank ?? index + 1)}
               </div>
 
               <div className="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center text-white font-semibold text-lg">

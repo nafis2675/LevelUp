@@ -37,7 +37,7 @@ export const CreateXPRuleSchema = z.object({
   cooldown: z.number().int().min(0).default(0),
   maxPerDay: z.number().int().min(0).default(0),
   isActive: z.boolean().default(true),
-  conditions: z.record(z.any()).optional()
+  conditions: z.record(z.string(), z.any()).optional()
 });
 
 // Reward creation validation
@@ -46,7 +46,7 @@ export const CreateRewardSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().min(1).max(500),
   type: z.enum(['role', 'free_days', 'discount_code', 'custom']),
-  config: z.record(z.any()),
+  config: z.record(z.string(), z.any()),
   requiredLevel: z.number().int().min(1).optional(),
   requiredXP: z.number().int().min(0).optional(),
   requiredBadges: z.array(z.string()).optional(),

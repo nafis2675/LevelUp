@@ -251,7 +251,7 @@ export async function getMemberRank(
         }
       });
 
-      rank = allMembers.filter(m => m._count.memberBadges > badgeCount).length;
+      rank = allMembers.filter((m: any) => m._count.memberBadges > badgeCount).length;
       break;
 
     case 'weekly_xp':

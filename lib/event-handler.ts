@@ -195,7 +195,7 @@ export async function getEventStats(companyId: string, days: number = 7) {
   });
 
   // Group by event type
-  const stats = transactions.reduce((acc, t) => {
+  const stats = transactions.reduce((acc: any, t: any) => {
     if (!acc[t.eventType]) {
       acc[t.eventType] = { count: 0, totalXP: 0 };
     }

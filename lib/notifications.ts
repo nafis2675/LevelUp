@@ -1,7 +1,11 @@
 // lib/notifications.ts - Notification System
 
+import { prisma } from './prisma';
 import { sendNotification } from './whop';
-import type { Member, Badge } from '@prisma/client';
+
+// Infer types from Prisma query results
+type Member = NonNullable<Awaited<ReturnType<typeof prisma.member.findUnique>>>;
+type Badge = NonNullable<Awaited<ReturnType<typeof prisma.badge.findUnique>>>;
 
 /**
  * Send level up notification
