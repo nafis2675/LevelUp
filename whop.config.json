@@ -3,8 +3,35 @@
   "identifier": "levelup",
   "version": "1.0.0",
   "description": "Smart gamification suite with XP, levels, badges, and leaderboards for your Whop community",
-  "icon": "https://your-domain.com/icon.png",
-  "category": "Engagement",
+  "icon": "https://thelevelup.vercel.app/icon.svg",
+  "category": "engagement",
+  "website": "https://thelevelup.vercel.app",
+  "supportEmail": "support@thelevelup.app",
+  "experiences": [
+    {
+      "slug": "dashboard",
+      "name": "Dashboard",
+      "description": "Manage XP, badges, rewards, and rules for your Whop community",
+      "path": "/",
+      "default": true
+    },
+    {
+      "slug": "experience-detail",
+      "name": "Experience Detail",
+      "description": "Deep link used by Whop to open a specific experience",
+      "path": "/experiences/[experienceId]"
+    }
+  ],
+  "iframe": {
+    "url": "https://thelevelup.vercel.app",
+    "sandbox": [
+      "allow-scripts",
+      "allow-same-origin",
+      "allow-forms",
+      "allow-popups",
+      "allow-popups-to-escape-sandbox"
+    ]
+  },
   "permissions": [
     "read:company",
     "read:memberships",
