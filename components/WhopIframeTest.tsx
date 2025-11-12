@@ -6,12 +6,23 @@ export function WhopIframeTest() {
   const iframeSdk = useIframeSdk();
 
   const handleOpenWhopDocs = () => {
-    iframeSdk.openExternalUrl({ url: 'https://docs.whop.com' });
+    try {
+      iframeSdk.openExternalUrl({ url: 'https://docs.whop.com' });
+    } catch (error) {
+      console.error('Error opening URL:', error);
+      // Fallback for when not in iframe
+      window.open('https://docs.whop.com', '_blank');
+    }
   };
 
   const handleOpenUserProfile = () => {
-    // Example: Opens a Whop user profile modal
-    iframeSdk.openExternalUrl({ url: 'https://whop.com/@whop' });
+    try {
+      iframeSdk.openExternalUrl({ url: 'https://whop.com/@whop' });
+    } catch (error) {
+      console.error('Error opening URL:', error);
+      // Fallback for when not in iframe
+      window.open('https://whop.com/@whop', '_blank');
+    }
   };
 
   return (
@@ -20,7 +31,7 @@ export function WhopIframeTest() {
         🔗 Whop Iframe SDK Active
       </h3>
       <p className="text-xs text-blue-700 mb-3">
-        Your app is running inside Whop&apos;s iframe and can communicate with the platform.
+        Your app is running {typeof window !== 'undefined' && window.parent !== window ? 'inside Whop\'s iframe' : 'standalone (not in iframe)'} and can communicate with the platform.
       </p>
       <div className="flex gap-2">
         <button
