@@ -71,13 +71,15 @@ export async function POST(req: Request) {
 
     const rule = await prisma.xPRule.create({
       data: {
+        id: `rule_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         companyId,
         name,
         eventType,
         xpAmount,
         cooldown: cooldown || 0,
         maxPerDay: maxPerDay || 0,
-        conditions: conditions || null
+        conditions: conditions || null,
+        updatedAt: new Date()
       }
     });
 

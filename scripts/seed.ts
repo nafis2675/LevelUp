@@ -15,7 +15,8 @@ async function main() {
       id: 'test-company-1',
       name: 'Test Community',
       ownerId: 'test-owner-1',
-      settings: {}
+      settings: {},
+      updatedAt: new Date()
     }
   });
 
@@ -55,7 +56,8 @@ async function main() {
       update: {},
       create: {
         id: `rule-${rule.eventType}`,
-        ...rule
+        ...rule,
+        updatedAt: new Date()
       }
     });
     console.log('✅ Created rule:', rule.name);
@@ -107,7 +109,11 @@ async function main() {
 
   for (const badge of badges) {
     await prisma.badge.create({
-      data: badge
+      data: {
+        id: `badge-${badge.name.toLowerCase().replace(/\s+/g, '-')}`,
+        ...badge,
+        updatedAt: new Date()
+      }
     });
     console.log('✅ Created badge:', badge.name);
   }
@@ -122,7 +128,8 @@ async function main() {
       name: 'All-Time Top Players',
       type: 'total_xp',
       timeframe: 'all_time',
-      isDefault: true
+      isDefault: true,
+      updatedAt: new Date()
     }
   });
 

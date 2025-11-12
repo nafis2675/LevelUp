@@ -106,6 +106,7 @@ export async function POST(req: Request) {
     // Create claim record
     const claim = await prisma.rewardClaim.create({
       data: {
+        id: `claim_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         memberId,
         rewardId,
         status: 'pending'

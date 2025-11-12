@@ -1,6 +1,7 @@
 // app/(dashboard)/page.tsx - Main Dashboard
 
 import { Suspense } from 'react';
+import { WhopIframeTest } from '@/components/WhopIframeTest';
 
 async function getDashboardStats() {
   // This would fetch from your API in production
@@ -85,6 +86,8 @@ export default async function Dashboard() {
           Overview of your community&apos;s gamification stats
         </p>
       </div>
+
+      <WhopIframeTest />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard

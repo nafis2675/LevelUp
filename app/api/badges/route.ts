@@ -21,14 +21,14 @@ export async function GET(req: Request) {
         companyId,
         ...(memberId ? {} : { isSecret: false })
       },
-      include: {
-        ...(memberId && {
-          memberBadges: {
+      ...(memberId && {
+        include: {
+          MemberBadge: {
             where: { memberId },
             select: { earnedAt: true, progress: true }
           }
-        })
-      },
+        }
+      }),
       orderBy: { createdAt: 'desc' }
     });
 
@@ -76,13 +76,15 @@ export async function POST(req: Request) {
 
     const badge = await prisma.badge.create({
       data: {
+        id: `badge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         companyId,
         name,
         description,
         imageUrl,
         rarity: rarity || 'common',
         requirement,
-        isSecret: isSecret || false
+        isSecret: isSecret || false,
+        updatedAt: new Date()
       }
     });
 

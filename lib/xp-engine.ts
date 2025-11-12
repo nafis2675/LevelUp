@@ -83,6 +83,7 @@ export async function grantXP(params: GrantXPParams): Promise<GrantXPResult> {
           // Step 4: Create transaction record
           await tx.xPTransaction.create({
             data: {
+              id: `xp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
               memberId: validated.memberId,
               amount: validated.amount,
               reason: validated.reason,
@@ -221,11 +222,13 @@ export async function getOrCreateMember(
   if (!member && data) {
     member = await prisma.member.create({
       data: {
+        id: `member_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         whopUserId,
         companyId,
         whopMembershipId: data.whopMembershipId,
         displayName: data.displayName,
-        avatarUrl: data.avatarUrl
+        avatarUrl: data.avatarUrl,
+        updatedAt: new Date()
       }
     });
   }

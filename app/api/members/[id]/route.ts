@@ -12,23 +12,23 @@ export async function GET(
     const member = await prisma.member.findUnique({
       where: { id: params.id },
       include: {
-        memberBadges: {
+        MemberBadge: {
           include: {
-            badge: true
+            Badge: true
           },
           orderBy: {
             earnedAt: 'desc'
           }
         },
-        xpTransactions: {
+        XPTransaction: {
           orderBy: {
             createdAt: 'desc'
           },
           take: 20
         },
-        rewardsClaimed: {
+        RewardClaim: {
           include: {
-            reward: true
+            Reward: true
           },
           orderBy: {
             claimedAt: 'desc'

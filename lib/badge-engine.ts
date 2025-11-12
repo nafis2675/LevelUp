@@ -104,6 +104,7 @@ export async function checkBadgeAchievements(
                   }
                 },
                 create: {
+                  id: `memberbadge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                   memberId,
                   badgeId: badge.id,
                   earnedAt: new Date()
@@ -308,7 +309,7 @@ export async function getBadgeProgress(memberId: string, badgeId: string): Promi
 
     const badge = await prisma.badge.findUnique({
       where: { id: badgeId },
-      include: { company: true }
+      include: { Company: true }
     });
 
     if (!badge) return 0;

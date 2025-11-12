@@ -21,6 +21,8 @@
     "@tanstack/react-query": "^5.32.0",
     "@upstash/ratelimit": "^2.0.7",
     "@upstash/redis": "^1.35.6",
+    "@whop/iframe": "^0.0.3",
+    "@whop/react": "^0.3.0",
     "axios": "^1.7.0",
     "clsx": "^2.1.0",
     "next": "^14.2.0",

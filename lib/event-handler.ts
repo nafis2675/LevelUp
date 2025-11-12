@@ -180,7 +180,7 @@ export async function getEventStats(companyId: string, days: number = 7) {
 
   const transactions = await prisma.xPTransaction.findMany({
     where: {
-      member: {
+      Member: {
         companyId
       },
       createdAt: {

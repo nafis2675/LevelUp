@@ -67,6 +67,7 @@ export async function POST(req: Request) {
 
     const reward = await prisma.reward.create({
       data: {
+        id: `reward_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         companyId,
         name,
         description,
@@ -76,7 +77,8 @@ export async function POST(req: Request) {
         requiredXP: requiredXP || null,
         requiredBadges: requiredBadges || null,
         isRepeatable: isRepeatable || false,
-        cooldownDays: cooldownDays || 0
+        cooldownDays: cooldownDays || 0,
+        updatedAt: new Date()
       }
     });
 

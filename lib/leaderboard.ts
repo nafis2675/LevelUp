@@ -272,12 +272,12 @@ export async function getMemberRank(
         where: { companyId: member.companyId },
         include: {
           _count: {
-            select: { memberBadges: true }
+            select: { MemberBadge: true }
           }
         }
       });
 
-      rank = allMembers.filter((m: any) => m._count.memberBadges > badgeCount).length;
+      rank = allMembers.filter((m: any) => m._count.MemberBadge > badgeCount).length;
       break;
 
     case 'weekly_xp':
