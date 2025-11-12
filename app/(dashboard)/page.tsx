@@ -2,9 +2,8 @@
 
 import { Suspense } from 'react';
 
-async function getDashboardStats() {
-  // This would fetch from your API in production
-  // For now, returning mock data
+// Return mock data immediately - no async/database calls
+function getDashboardStats() {
   return {
     totalMembers: 247,
     newThisWeek: 23,
@@ -16,8 +15,8 @@ async function getDashboardStats() {
   };
 }
 
-async function getTopMembers() {
-  // Mock data - would fetch from API
+// Return mock data immediately - no async/database calls
+function getTopMembers() {
   return [
     { id: '1', displayName: 'User 1', totalXP: 15000, level: 15, avatarUrl: null },
     { id: '2', displayName: 'User 2', totalXP: 12000, level: 13, avatarUrl: null },
@@ -73,9 +72,9 @@ function TopMembersList({ members }: { members: any[] }) {
   );
 }
 
-export default async function Dashboard() {
-  const stats = await getDashboardStats();
-  const topMembers = await getTopMembers();
+export default function Dashboard() {
+  const stats = getDashboardStats();
+  const topMembers = getTopMembers();
 
   return (
     <div className="space-y-6 px-4 sm:px-0">
